@@ -3,6 +3,11 @@ import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+
+chrome_options = Options()
+chrome_options.add_argument("--window-size=1920x1080")
+chrome_options.add_argument('--log-level=3')
 
 driver = webdriver.Chrome(service=Service('chromedriver.exe'))
 url = "https://www.amazon.com.br/gp/bestsellers/books/7873971011/ref=zg_bs_pg_1_books?ie=UTF8&pg=1"
@@ -44,6 +49,9 @@ with open('mais-vendidos.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 
                 # Get the href attribute value
                 href = link_element.get_attribute('href')
+                
+                # Remove everything after "ref=" in href
+                href = href.split('ref=')[0]
                 
                 # Write the href to the href CSV file
                 href_csv_writer.writerow([href])
