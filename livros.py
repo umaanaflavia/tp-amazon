@@ -20,6 +20,7 @@ driver = webdriver.Chrome(service=Service('chromedriver.exe'), options=chrome_op
 # Define regular expressions for filtering lines
 regex_patterns = [
     r'.*páginas$',
+    r'^Editora :',
     r'^ISBN-10 :',
     r'^ISBN-13 :',
     r'^Ranking dos mais vendidos:',
