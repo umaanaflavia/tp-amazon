@@ -6,6 +6,34 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import re
 
+
+def remove_ref_from_link(link):
+    return link.split('ref=')[0]  # Split the link by 'ref=' and keep only the part before it
+
+
+def is_link_in_file(link, file_path):
+    with open(file_path, 'r') as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            if row and row[0] == link:
+                return True
+    return False
+
+
+# Handles missing possible missing data in each row so the final csv remains estructured
+def handle_missing_book_data(row: list):
+    reviews_exist = any('Avaliações' in field for field in row)
+    publisher_exist =  any('Editora' in field for field in row)
+    if not publisher_exist:
+        publisher_index = 2
+        row.insert(publisher_index, '')
+    if not reviews_exist:
+        review_score_index =  7
+        num_of_reviews_index = 8
+        row.insert(review_score_index,'')
+        row.insert(num_of_reviews_index,'')
+
+
 link_file = "link-livros.csv"
 output_file = "livros.csv"
 
@@ -27,17 +55,21 @@ regex_patterns = [
     r'^Avaliações dos clientes:',
     r'.* avaliações de clientes'
 ]
-
-def remove_ref_from_link(link):
-    return link.split('ref=')[0]  # Split the link by 'ref=' and keep only the part before it
-
-def is_link_in_file(link, file_path):
-    with open(file_path, 'r') as file:
-        csv_reader = csv.reader(file)
-        for row in csv_reader:
-            if row and row[0] == link:
-                return True
-    return False
+with open(output_file, 'w', newline='', encoding='utf-8') as csv_file:
+    csv_writer = csv.writer(csv_file)   
+    headers = ['url',
+                'title',
+                'description',
+                'publisher',
+                'cover type/page num.',
+                'ISBN-10',
+                'ISBN-13',
+                'best bellers rank',
+                'review score',
+                'num. of reviews',
+                'frequently bought togheter']
+    csv_writer.writerow(headers)
+                
 
 with open(link_file, 'r') as file:
     csv_reader = csv.reader(file)
@@ -64,6 +96,8 @@ with open(link_file, 'r') as file:
                 leia_mais_element.click()
             except:
                 pass
+
+            book_title = driver.find_element(By.ID, "productTitle").text
 
             # Find the element with the ID "bookDescription_feature_div"
             book_description = driver.find_element(By.ID, "bookDescription_feature_div")
@@ -102,11 +136,14 @@ with open(link_file, 'r') as file:
 
             # Filter lines using regular expressions
             filtered_lines = [line for line in detail_bullets_content if any(re.match(pattern, line) for pattern in regex_patterns)]
-
             # Write the filtered content to the output CSV file
             with open(output_file, 'a', newline='', encoding='utf-8') as csv_file:
                 csv_writer = csv.writer(csv_file)
-                csv_writer.writerow([url, book_description_content] + filtered_lines +  [link_titles])
+
+                row = [url, book_title, book_description_content, *filtered_lines, link_titles]
+                handle_missing_book_data(row)
+
+                csv_writer.writerow(row)
         else:
             print("Text 'Frequentemente comprados juntos' not found on the page.")
 
