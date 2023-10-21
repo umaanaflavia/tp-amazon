@@ -73,6 +73,7 @@ with open(output_file, 'w', newline='', encoding='utf-8') as csv_file:
 
 with open(link_file, 'r') as file:
     csv_reader = csv.reader(file)
+    next(csv_reader)
 
     for row in csv_reader:
         url = row[0]
