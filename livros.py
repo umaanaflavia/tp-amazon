@@ -107,9 +107,13 @@ with open(link_file, 'r') as file:
                 while fail:
                     try:
                         book_title = driver.find_element(By.ID, "productTitle").text
-                        book_description = driver.find_element(By.ID, "bookDescription_feature_div")
-                        expander_content = book_description.find_element(By.CLASS_NAME, "a-expander-content")
-                        book_description_content = expander_content.text.replace('\n', '').replace('"', '')
+                        try:
+                            book_description = driver.find_element(By.ID, "bookDescription_feature_div")
+                            expander_content = book_description.find_element(By.CLASS_NAME, "a-expander-content")
+                            book_description_content = expander_content.text.replace('\n', '').replace('"', '')
+                        except:
+                            book_description_content = ""
+                            pass
                         faceout_box = driver.find_element(By.CLASS_NAME, "p13n-sc-shoveler")
                         link_elements = faceout_box.find_elements(By.CLASS_NAME, "p13n-sc-uncoverable-faceout")
                         fail = 0
