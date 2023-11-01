@@ -9,6 +9,14 @@ import re
 def remove_ref_from_link(link):
     return link.split('ref=')[0]  # Split the link by 'ref=' and keep only the part before it
 
+def is_book_in_file(book_title, output_file):
+    with open(output_file, 'r', newline='', encoding='utf-8') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        for row in csv_reader:
+            if row and row[1] == book_title:
+                return True
+    return False
+
 def is_link_in_file(link, file_path):
     with open(file_path, 'r') as file:
         csv_reader = csv.reader(file)
@@ -55,6 +63,7 @@ with open(output_file, 'w', newline='', encoding='utf-8') as csv_file:
     csv_writer = csv.writer(csv_file)   
     headers = ['url',
                 'title',
+                'category',
                 'description',
                 'publisher',
                 'cover type/page num.',
@@ -82,8 +91,7 @@ with open(link_file, 'r') as file:
             else:
                 break  # Exit the loop if the message is not present
 
-        time.sleep(1)
-        book = False
+        time.sleep(2)
 
         if "Clientes que compraram este item também compraram" in driver.page_source:
             try:
@@ -107,6 +115,8 @@ with open(link_file, 'r') as file:
                 while fail:
                     try:
                         book_title = driver.find_element(By.ID, "productTitle").text
+                        book_category = driver.find_element(By.ID, "wayfinding-breadcrumbs_container").text.split("\n›\n")
+
                         try:
                             book_description = driver.find_element(By.ID, "bookDescription_feature_div")
                             expander_content = book_description.find_element(By.CLASS_NAME, "a-expander-content")
@@ -114,48 +124,54 @@ with open(link_file, 'r') as file:
                         except:
                             book_description_content = ""
                             pass
+                        
                         faceout_box = driver.find_element(By.CLASS_NAME, "p13n-sc-shoveler")
                         link_elements = faceout_box.find_elements(By.CLASS_NAME, "p13n-sc-uncoverable-faceout")
                         fail = 0
-                        print(index+2, " - ", book_title)
                         break  # Elements found successfully, exit retry loop
+                    
                     except Exception as e:
                         print(f"Failed to find elements: {str(e)}")
                         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                         time.sleep(2)  # Wait for a moment before retrying
 
-                link_list = []
-                link_titles = []
-                for i in range(0, len(link_elements)):
-                    link = link_elements[i].find_element(By.TAG_NAME, "a").get_attribute('href')
-                    cleaned_link = remove_ref_from_link(link)  # Remove everything after "ref="
-                    link_titles.append(link_elements[i].find_element(By.CLASS_NAME, "p13n-sc-truncate-desktop-type2").text)
+                if not is_book_in_file(book_title, output_file):
+                    print(index+2, " - ", book_title)
+                    link_list = []
+                    link_titles = []
+                    for i in range(0, len(link_elements)):
+                        link = link_elements[i].find_element(By.TAG_NAME, "a").get_attribute('href')
+                        cleaned_link = remove_ref_from_link(link)  # Remove everything after "ref="
+                        link_titles.append(link_elements[i].find_element(By.CLASS_NAME, "p13n-sc-truncate-desktop-type2").text)
+                        
+                        if not is_link_in_file(cleaned_link, link_file):  # Check if the link is not already in the file
+                            link_list.append(cleaned_link)
+                            # Append the cleaned link to the end of the link_file
+                            with open(link_file, 'a', newline='', encoding='utf-8') as link_file_append:
+                                link_file_writer = csv.writer(link_file_append)
+                                link_file_writer.writerow([cleaned_link])
+                        
+                    # Find the element with the ID "detailBullets_feature_div"
+                    detail_bullets = driver.find_element(By.ID, "detailBullets_feature_div")
                     
-                    if not is_link_in_file(cleaned_link, link_file):  # Check if the link is not already in the file
-                        link_list.append(cleaned_link)
-                        # Append the cleaned link to the end of the link_file
-                        with open(link_file, 'a', newline='', encoding='utf-8') as link_file_append:
-                            link_file_writer = csv.writer(link_file_append)
-                            link_file_writer.writerow([cleaned_link])
+                    # Extract the content of the element and split it into lines
+                    detail_bullets_content = detail_bullets.text.split('\n')
                     
-                # Find the element with the ID "detailBullets_feature_div"
-                detail_bullets = driver.find_element(By.ID, "detailBullets_feature_div")
-                
-                # Extract the content of the element and split it into lines
-                detail_bullets_content = detail_bullets.text.split('\n')
-                
-                # Filter lines using regular expressions
-                filtered_lines = [line for line in detail_bullets_content if any(re.match(pattern, line) for pattern in regex_patterns)]
-                
-                # Write the filtered content to the output CSV file
-                with open(output_file, 'a', newline='', encoding='utf-8') as csv_file:
-                    csv_writer = csv.writer(csv_file)
-                    row = [url, book_title, book_description_content, *filtered_lines, link_titles]
-                    handle_missing_book_data(row)
-                    csv_writer.writerow(row)
+                    # Filter lines using regular expressions
+                    filtered_lines = [line for line in detail_bullets_content if any(re.match(pattern, line) for pattern in regex_patterns)]
+                    
+                    # Write the filtered content to the output CSV file
+                    with open(output_file, 'a', newline='', encoding='utf-8') as csv_file:
+                        csv_writer = csv.writer(csv_file)
+                        row = [url, book_title, book_category, book_description_content, *filtered_lines, link_titles]
+                        handle_missing_book_data(row)
+                        csv_writer.writerow(row)
+                else:
+                    print("Book title already on file.")
+                    continue
             else:
                 print("Not a book.")
         else:
-            print("Text 'Frequentemente comprados juntos' not found on the page.")
+            print("Text 'Clientes que compraram este item também compraram' not found on the page.")
 
 driver.quit()

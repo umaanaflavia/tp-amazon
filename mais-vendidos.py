@@ -65,7 +65,7 @@ with open('mais-vendidos.csv', 'w', newline='', encoding='utf-8') as csvfile:
             data.append(lines)
             
             # Write the details to the informations CSV file
-            link_list.append(href)
+            link_list.append(link)
         
         # Check if there is a "Próxima página" button
         try:
