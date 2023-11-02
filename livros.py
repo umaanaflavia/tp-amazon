@@ -91,51 +91,49 @@ with open(link_file, 'r') as file:
             else:
                 break  # Exit the loop if the message is not present
 
-        time.sleep(2)
+        time.sleep(1)
 
         if "Clientes que compraram este item também compraram" in driver.page_source:
             try:
-                if ("Livros" in driver.find_element(By.ID, "wayfinding-breadcrumbs_feature_div").text) or ("Capa" in driver.find_element(By.ID, "tmmSwatches").text):
-                    book = True
+                book_category = driver.find_element(By.ID, "wayfinding-breadcrumbs_container").text.split("\n›\n")
             except:
-                book = False
-                pass
+                book_category = ""
 
-            if book:
-                # Click the "Leia mais" element if it exists
+            if "Política" in " ".join(book_category):
                 try:
+                    book_title = driver.find_element(By.ID, "productTitle").text
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    time.sleep(1)
+                    # Click the "Leia mais" element if it exists
                     leia_mais_element = driver.find_element(By.PARTIAL_LINK_TEXT, "Leia mais")
                     leia_mais_element.click()
                 except:
-                    pass
+                    book_title = ""
                 
-                # Retry finding the elements in case of failure
-                fail = 1
-                while fail:
-                    try:
-                        book_title = driver.find_element(By.ID, "productTitle").text
-                        book_category = driver.find_element(By.ID, "wayfinding-breadcrumbs_container").text.split("\n›\n")
-
+                if (book_title != "") and (not is_book_in_file(book_title, output_file)):
+                    # Retry finding the elements in case of failure
+                    fail = 1
+                    while fail:
                         try:
                             book_description = driver.find_element(By.ID, "bookDescription_feature_div")
                             expander_content = book_description.find_element(By.CLASS_NAME, "a-expander-content")
-                            book_description_content = expander_content.text.replace('\n', '').replace('"', '')
-                        except:
-                            book_description_content = ""
-                            pass
+                            try:
+                                book_description_content = expander_content.text.replace('\n', '').replace('"', '')
+                            except:
+                                book_description_content = ""
+                                pass
+                            
+                            faceout_box = driver.find_element(By.CLASS_NAME, "p13n-sc-shoveler")
+                            link_elements = faceout_box.find_elements(By.CLASS_NAME, "p13n-sc-uncoverable-faceout")
+                            
+                            fail = 0
+                            break  # Elements found successfully, exit retry loop
                         
-                        faceout_box = driver.find_element(By.CLASS_NAME, "p13n-sc-shoveler")
-                        link_elements = faceout_box.find_elements(By.CLASS_NAME, "p13n-sc-uncoverable-faceout")
-                        fail = 0
-                        break  # Elements found successfully, exit retry loop
-                    
-                    except Exception as e:
-                        print(f"Failed to find elements: {str(e)}")
-                        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                        time.sleep(2)  # Wait for a moment before retrying
+                        except Exception as e:
+                            print(f"Failed to find elements: {str(e)}")
+                            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                            time.sleep(2)  # Wait for a moment before retrying
 
-                if not is_book_in_file(book_title, output_file):
                     print(index+2, " - ", book_title)
                     link_list = []
                     link_titles = []
@@ -170,7 +168,7 @@ with open(link_file, 'r') as file:
                     print("Book title already on file.")
                     continue
             else:
-                print("Not a book.")
+                print("'Política' does not appear in the book categories.")
         else:
             print("Text 'Clientes que compraram este item também compraram' not found on the page.")
 
